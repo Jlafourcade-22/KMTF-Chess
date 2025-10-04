@@ -6,11 +6,13 @@ import time
 
 app = FastAPI(title="Stockfish Analysis API")
 
+
 class AnalyzeRequest(BaseModel):
     fen: str
-    depth: int = 15            # default search depth
-    movetime_ms: int = None    # if provided, overrides depth
-    multipv: int = 1           # number of PV lines (set >1 if you want alternatives)
+    depth: int = 15  # default search depth
+    movetime_ms: int = None  # if provided, overrides depth
+    multipv: int = 1  # number of PV lines (set >1 if you want alternatives)
+
 
 @app.post("/analyze")
 def analyze(req: AnalyzeRequest):
@@ -35,10 +37,16 @@ def analyze(req: AnalyzeRequest):
             info = engine.analyse(board, limit, multipv=req.multipv)
             elapsed_ms = int((time.time() - start) * 1000)
 
+            if isinstance(info, list):
+                info = info[0]
+
             # info is a dict (for multipv=1). Parse score & PV
             score = info["score"].white()
             if score.is_mate():
-                eval_obj = {"type": "mate", "value": score.mate()}  # positive => mate for White
+                eval_obj = {
+                    "type": "mate",
+                    "value": score.mate(),
+                }  # positive => mate for White
             else:
                 cp = score.score()
                 eval_obj = {"type": "cp", "value": cp, "eval": cp / 100.0}
@@ -59,9 +67,11 @@ def analyze(req: AnalyzeRequest):
                 "bestmove": bestmove,
                 "pv": pv_moves,
                 "depth": depth_returned,
-                "time_ms": elapsed_ms
+                "time_ms": elapsed_ms,
             }
     except FileNotFoundError:
-        raise HTTPException(status_code=500, detail=f"Stockfish binary not found at {engine_path}")
+        raise HTTPException(
+            status_code=500, detail=f"Stockfish binary not found at {engine_path}"
+        )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

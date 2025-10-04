@@ -5,3 +5,5 @@ services:
     ports:
       - "8000:80"
     restart: unless-stopped
+    volumes:
+      - ./app:/app
